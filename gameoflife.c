@@ -1,16 +1,19 @@
 #include <Windows.h>
 #include <Windowsx.h>
+#include <strsafe.h>
 #include <stdbool.h>
 #include <stdio.h>
 
+#define MIN(a, b) (a < b ? a : b)
+#define MAX(a, b) (a > b ? a : b)
 #define WIDTH     100
 #define HEIGHT    50
 #define CELL_SIZE 10
-#define GEN_TIME  500
+#define GEN_TIME  300
 
 bool board[WIDTH][HEIGHT];
 bool paused = true;
-int generations = 0;
+int generation = 0;
 
 HBRUSH colors[2];
 
@@ -63,7 +66,7 @@ void NextGeneration()
 	}
 
 	memcpy(board, newBoard, sizeof(board));
-	generations++;
+	generation++;
 }
 
 RECT GameToScreenRect(int x, int y)
@@ -91,17 +94,38 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message) {
 
-		case WM_CREATE:
-			return 0;
+		case WM_CREATE: {
+			// Get text metrics
+			HDC hdc = GetDC(hwnd);
+			TEXTMETRIC metrics;
+			GetTextMetrics(hdc, &metrics);
+			ReleaseDC(hwnd, hdc);
 
-		case WM_TIMER:
+			// Calculate window size
+			RECT rect;
+			rect.left = 0;
+			rect.top = 0;
+			rect.right = WIDTH * CELL_SIZE;
+			rect.bottom = HEIGHT * CELL_SIZE + metrics.tmHeight;
+			AdjustWindowRect(&rect, WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX, false);
+
+			// Set the position
+			SetWindowPos(
+				hwnd, NULL, 0, 0,
+				rect.right - rect.left, rect.bottom - rect.top,
+				SWP_NOMOVE | SWP_NOZORDER
+			);
+		}
+
+		case WM_TIMER: {
 			NextGeneration();
 			RECT rect;
 			GetClientRect(hwnd, &rect);
 			InvalidateRect(hwnd, &rect, false);
 			return 0;
-			
-		case WM_PAINT:
+		}
+
+		case WM_PAINT: {
 			RECT updateRect;
 			if (!GetUpdateRect(hwnd, &updateRect, false)) return 0;
 
@@ -111,17 +135,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 			struct Point updateStart = ScreenToGamePoint(updateRect.left, updateRect.top);
 			struct Point updateEnd   = ScreenToGamePoint(updateRect.right, updateRect.bottom);
 
-			for (int x = updateStart.x; x < updateEnd.x; x++) {
-				for (int y = updateStart.y; y < updateEnd.y; y++) {
+			for (int x = MIN(updateStart.x, 0); x < MAX(updateEnd.x, WIDTH); x++) {
+				for (int y = MIN(updateStart.y, 0); y < MAX(updateEnd.y, HEIGHT); y++) {
 					RECT rect = GameToScreenRect(x, y);
 					FillRect(hdc, &rect, colors[board[x][y]]);
 				}
 			}
+			
+			char generationStatus[16];
+			StringCbPrintf(generationStatus, sizeof(generationStatus), TEXT("Generation %d"), generation);
+			SetTextColor(hdc, RGB(255, 255, 255));
+			SetBkColor(hdc, RGB(0, 0, 0));
+			TextOut(hdc, 0, HEIGHT * CELL_SIZE, generationStatus, strlen(generationStatus));
 
 			EndPaint(hwnd, &ps);	
 			return 0;
+		}
 
-		case WM_LBUTTONDOWN:
+		case WM_LBUTTONDOWN: {
 			int x = GET_X_LPARAM(lParam);
 			int y = GET_Y_LPARAM(lParam);
 			struct Point point = ScreenToGamePoint(x, y);
@@ -132,8 +163,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 				InvalidateRect(hwnd, &rect, false);
 			}
 			return 0;
+		}
 
-		case WM_KEYDOWN:
+		case WM_KEYDOWN: {
 			switch (wParam) {
 
 				case VK_SPACE:
@@ -144,10 +176,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			}
 			return 0;
+		}
 
-		case WM_DESTROY:
+		case WM_DESTROY: {
 			PostQuitMessage(0);
 			return 0;
+		}
 	}
 
 	return DefWindowProc(hwnd, message, wParam, lParam);
@@ -177,9 +211,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
 	HWND hwnd = CreateWindow(
 		name, name,
-		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT,
-		WIDTH * CELL_SIZE, HEIGHT * CELL_SIZE,
+		WS_OVERLAPPEDWINDOW ^ WS_THICKFRAME ^ WS_MAXIMIZEBOX,
+		CW_USEDEFAULT, CW_USEDEFAULT, 0, 0,
 		NULL, NULL, hInstance, NULL
 	);
 
