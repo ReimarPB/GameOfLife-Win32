@@ -8,12 +8,61 @@
 #define CELL_SIZE 10
 
 bool board[WIDTH][HEIGHT];
+int generations = 0;
+
 HBRUSH colors[2];
 
 struct Point {
 	int x;
 	int y;
 };
+
+const UINT IDT_GENERATION = 0;
+
+void NextGeneration()
+{
+	bool newBoard[WIDTH][HEIGHT] = {0}; // TODO 
+
+	for (int x = 0; x < WIDTH; x++) {
+		for (int y = 0; y < HEIGHT; y++) {
+			
+			struct Point neighbors[] = {
+				{ x - 1, y - 1 },
+				{ x, y - 1 },
+				{ x - 1, y },
+				{ x + 1, y - 1 },
+				{ x - 1, y + 1 },
+				{ x + 1, y },
+				{ x, y + 1 },
+				{ x + 1, y + 1 }
+			};
+			
+			int neighborCount = 0;
+			for (int i = 0; i < sizeof(neighbors) / sizeof(neighbors[0]); i++) {
+				if (
+					neighbors[i].x >= 0 && neighbors[i].x < WIDTH &&
+					neighbors[i].y >= 0 && neighbors[i].y < HEIGHT &&
+					board[neighbors[i].x][neighbors[i].y] == 1
+				) {
+					neighborCount++;
+				}
+			}
+
+			if (
+				(board[x][y] == 1 && neighborCount == 2) ||
+				neighborCount == 3
+			) {
+				newBoard[x][y] = 1;
+			} else {
+				newBoard[x][y] = 0;
+			}
+
+		}
+	}
+
+	memcpy(board, newBoard, sizeof(board));
+	generations++;
+}
 
 RECT GameToScreenRect(int x, int y)
 {
@@ -39,8 +88,19 @@ struct Point ScreenToGamePoint(int x, int y)
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message) {
-		case WM_PAINT:
 
+		case WM_CREATE:
+			SetTimer(hwnd, IDT_GENERATION, 5000, NULL);	
+			return 0;
+
+		case WM_TIMER:
+			NextGeneration();
+			RECT rect;
+			GetClientRect(hwnd, &rect);
+			InvalidateRect(hwnd, &rect, false);
+			return 0;
+			
+		case WM_PAINT:
 			RECT updateRect;
 			if (!GetUpdateRect(hwnd, &updateRect, false)) return 0;
 
