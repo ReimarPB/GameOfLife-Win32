@@ -6,8 +6,10 @@
 #define WIDTH     100
 #define HEIGHT    50
 #define CELL_SIZE 10
+#define GEN_TIME  500
 
 bool board[WIDTH][HEIGHT];
+bool paused = true;
 int generations = 0;
 
 HBRUSH colors[2];
@@ -21,7 +23,7 @@ const UINT IDT_GENERATION = 0;
 
 void NextGeneration()
 {
-	bool newBoard[WIDTH][HEIGHT] = {0}; // TODO 
+	bool newBoard[WIDTH][HEIGHT];
 
 	for (int x = 0; x < WIDTH; x++) {
 		for (int y = 0; y < HEIGHT; y++) {
@@ -81,7 +83,7 @@ struct Point ScreenToGamePoint(int x, int y)
 	y -= (y % CELL_SIZE);
 	x /= CELL_SIZE;
 	y /= CELL_SIZE;
-	struct Point point = { .x = x, .y = y }; // TODO
+	struct Point point = { x, y };
 	return point;
 }
 
@@ -90,7 +92,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 	switch (message) {
 
 		case WM_CREATE:
-			SetTimer(hwnd, IDT_GENERATION, 5000, NULL);	
 			return 0;
 
 		case WM_TIMER:
@@ -130,7 +131,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 				RECT rect = GameToScreenRect(point.x, point.y);
 				InvalidateRect(hwnd, &rect, false);
 			}
+			return 0;
 
+		case WM_KEYDOWN:
+			switch (wParam) {
+
+				case VK_SPACE:
+					if (paused) SetTimer(hwnd, IDT_GENERATION, GEN_TIME, NULL);
+					else KillTimer(hwnd, IDT_GENERATION);
+					paused = !paused;
+					break;
+
+			}
 			return 0;
 
 		case WM_DESTROY:
