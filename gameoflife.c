@@ -14,6 +14,7 @@
 bool board[WIDTH][HEIGHT];
 bool paused = true;
 int generation = 0;
+double speedMultiplier = 1.0;
 
 HBRUSH colors[2];
 
@@ -152,17 +153,29 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			
 			// Draw status line
-			char generationStatus[16];
-			StringCbPrintf(generationStatus, sizeof(generationStatus), TEXT("Generation %d"), generation);
 			SetTextColor(hdcMem, RGB(255, 255, 255));
 			SetBkColor(hdcMem, RGB(0, 0, 0));
+
+			char generationStatus[16];
+			StringCbPrintf(generationStatus, sizeof(generationStatus), TEXT("Generation %d"), generation);
 			TextOut(hdcMem, 0, HEIGHT * CELL_SIZE, generationStatus, strlen(generationStatus));
+
+			char speedStatus[16];
+			StringCbPrintf(speedStatus, sizeof(speedStatus), TEXT("Speed x%g"), speedMultiplier);
+			SetTextAlign(hdcMem, TA_RIGHT);
+			TextOut(hdcMem, WIDTH * CELL_SIZE, HEIGHT * CELL_SIZE, speedStatus, strlen(speedStatus));
+
+			if (paused) {
+				SetTextAlign(hdcMem, TA_CENTER);
+				PCSTR pausedText = TEXT("Paused");
+				TextOut(hdcMem, (WIDTH * CELL_SIZE) / 2, HEIGHT * CELL_SIZE, pausedText, strlen(pausedText));
+			}
 
 			// Copy buffer and clean up
 	        BitBlt(hdc, clientRect.left, clientRect.top, clientRect.right - clientRect.left, clientRect.bottom - clientRect.top, hdcMem, clientRect.left, clientRect.top, SRCCOPY);
 			SelectObject(hdcMem, hbmOld);
 			DeleteObject(hbmMem);
-			EndPaint(hwnd, &ps);	
+			EndPaint(hwnd, &ps);
 			return 0;
 		}
 
@@ -180,12 +193,41 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 
 		case WM_KEYDOWN: {
+			RECT statusRect, clientRect;
+			GetClientRect(hwnd, &statusRect);
+			GetClientRect(hwnd, &clientRect);
+			statusRect.top = HEIGHT * CELL_SIZE;
+
 			switch (wParam) {
 
 				case VK_SPACE:
-					if (paused) SetTimer(hwnd, IDT_GENERATION, GEN_TIME, NULL);
+					if (paused) SetTimer(hwnd, IDT_GENERATION, GEN_TIME / speedMultiplier, NULL);
 					else KillTimer(hwnd, IDT_GENERATION);
 					paused = !paused;
+					InvalidateRect(hwnd, &statusRect, false);
+					break;
+
+				case VK_RIGHT:
+					NextGeneration();
+					InvalidateRect(hwnd, &clientRect, false);
+					break;
+
+				case VK_UP:
+					speedMultiplier *= 2.0;
+					if (!paused) {
+						KillTimer(hwnd, IDT_GENERATION);
+						SetTimer(hwnd, IDT_GENERATION, GEN_TIME / speedMultiplier, NULL);
+					}
+					InvalidateRect(hwnd, &statusRect, false);
+					break;
+
+				case VK_DOWN:
+					speedMultiplier /= 2.0;
+					if (!paused) {
+						KillTimer(hwnd, IDT_GENERATION);
+						SetTimer(hwnd, IDT_GENERATION, GEN_TIME / speedMultiplier, NULL);
+					}
+					InvalidateRect(hwnd, &statusRect, false);
 					break;
 
 			}
