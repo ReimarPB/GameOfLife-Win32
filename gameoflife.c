@@ -129,25 +129,39 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 			RECT updateRect;
 			if (!GetUpdateRect(hwnd, &updateRect, false)) return 0;
 
+			RECT clientRect;
+			GetClientRect(hwnd, &clientRect);
+
 			PAINTSTRUCT ps;
 			HDC hdc = BeginPaint(hwnd, &ps);
+
+			// Create memory DC for double buffering
+			HDC hdcMem = CreateCompatibleDC(hdc);
+			HBITMAP hbmMem = CreateCompatibleBitmap(hdc, clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
+			HDC hbmOld = SelectObject(hdcMem, hbmMem);
 
 			struct Point updateStart = ScreenToGamePoint(updateRect.left, updateRect.top);
 			struct Point updateEnd   = ScreenToGamePoint(updateRect.right, updateRect.bottom);
 
+			// Draw cells
 			for (int x = MIN(updateStart.x, 0); x < MAX(updateEnd.x, WIDTH); x++) {
 				for (int y = MIN(updateStart.y, 0); y < MAX(updateEnd.y, HEIGHT); y++) {
 					RECT rect = GameToScreenRect(x, y);
-					FillRect(hdc, &rect, colors[board[x][y]]);
+					FillRect(hdcMem, &rect, colors[board[x][y]]);
 				}
 			}
 			
+			// Draw status line
 			char generationStatus[16];
 			StringCbPrintf(generationStatus, sizeof(generationStatus), TEXT("Generation %d"), generation);
-			SetTextColor(hdc, RGB(255, 255, 255));
-			SetBkColor(hdc, RGB(0, 0, 0));
-			TextOut(hdc, 0, HEIGHT * CELL_SIZE, generationStatus, strlen(generationStatus));
+			SetTextColor(hdcMem, RGB(255, 255, 255));
+			SetBkColor(hdcMem, RGB(0, 0, 0));
+			TextOut(hdcMem, 0, HEIGHT * CELL_SIZE, generationStatus, strlen(generationStatus));
 
+			// Copy buffer and clean up
+	        BitBlt(hdc, clientRect.left, clientRect.top, clientRect.right - clientRect.left, clientRect.bottom - clientRect.top, hdcMem, clientRect.left, clientRect.top, SRCCOPY);
+			SelectObject(hdcMem, hbmOld);
+			DeleteObject(hbmMem);
 			EndPaint(hwnd, &ps);	
 			return 0;
 		}
