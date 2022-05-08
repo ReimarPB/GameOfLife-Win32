@@ -6,13 +6,14 @@
 
 #define MIN(a, b) (a < b ? a : b)
 #define MAX(a, b) (a > b ? a : b)
-#define WIDTH     100
-#define HEIGHT    50
-#define CELL_SIZE 10
-#define GEN_TIME  300
+#define WIDTH      100
+#define HEIGHT     50
+#define CELL_SIZE  10
+#define BASE_SPEED 100
 
 bool board[WIDTH][HEIGHT];
 bool paused = true;
+bool grid = false;
 int generation = 0;
 double speedMultiplier = 1.0;
 
@@ -151,6 +152,26 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 					FillRect(hdcMem, &rect, colors[board[x][y]]);
 				}
 			}
+
+			// Draw grid
+			if (grid) {
+				HPEN grayPen = CreatePen(PS_SOLID, 0, RGB(128, 128, 128));
+				SelectObject(hdcMem, grayPen);
+				SelectObject(hdcMem, GetStockObject(NULL_BRUSH));
+
+				Rectangle(hdcMem, 0, 0, WIDTH * CELL_SIZE, HEIGHT * CELL_SIZE);
+
+				for (int x = 0; x < WIDTH; x++) {
+					MoveToEx(hdcMem, x * CELL_SIZE, 0, NULL);
+					LineTo(hdcMem, x * CELL_SIZE, HEIGHT * CELL_SIZE);
+				}
+
+				for (int y = 0; y < HEIGHT; y++) {
+					MoveToEx(hdcMem, 0, y * CELL_SIZE, NULL);
+					LineTo(hdcMem, WIDTH * CELL_SIZE, y * CELL_SIZE);
+				}
+
+			}
 			
 			// Draw status line
 			SetTextColor(hdcMem, RGB(255, 255, 255));
@@ -201,7 +222,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 			switch (wParam) {
 
 				case VK_SPACE:
-					if (paused) SetTimer(hwnd, IDT_GENERATION, GEN_TIME / speedMultiplier, NULL);
+					if (paused) SetTimer(hwnd, IDT_GENERATION, BASE_SPEED / speedMultiplier, NULL);
 					else KillTimer(hwnd, IDT_GENERATION);
 					paused = !paused;
 					InvalidateRect(hwnd, &statusRect, false);
@@ -216,7 +237,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 					speedMultiplier *= 2.0;
 					if (!paused) {
 						KillTimer(hwnd, IDT_GENERATION);
-						SetTimer(hwnd, IDT_GENERATION, GEN_TIME / speedMultiplier, NULL);
+						SetTimer(hwnd, IDT_GENERATION, BASE_SPEED / speedMultiplier, NULL);
 					}
 					InvalidateRect(hwnd, &statusRect, false);
 					break;
@@ -225,7 +246,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 					speedMultiplier /= 2.0;
 					if (!paused) {
 						KillTimer(hwnd, IDT_GENERATION);
-						SetTimer(hwnd, IDT_GENERATION, GEN_TIME / speedMultiplier, NULL);
+						SetTimer(hwnd, IDT_GENERATION, BASE_SPEED / speedMultiplier, NULL);
 					}
 					InvalidateRect(hwnd, &statusRect, false);
 					break;
@@ -238,6 +259,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 						KillTimer(hwnd, IDT_GENERATION);
 						InvalidateRect(hwnd, &clientRect, false);
 					}
+					break;
+
+				case 'G':
+					grid = !grid;
+					InvalidateRect(hwnd, &clientRect, false);
 					break;
 
 			}
