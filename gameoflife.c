@@ -300,21 +300,36 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	colors[0] = GetStockObject(BLACK_BRUSH);
 	colors[1] = GetStockObject(WHITE_BRUSH);
 
+	// Create icon
+	BYTE iconAnd[32] = { 0 };
+	BYTE iconXor[] = {
+		0x00, 0x00, 0x00, 0x00,
+		0x0F, 0xF0, 0x00, 0x00,
+		0x0F, 0xF0, 0x00, 0x00,
+		0x0F, 0xF0, 0x0F, 0xF0,
+		0x0F, 0xF0, 0x0F, 0xF0,
+		0x0F, 0xFF, 0xF0, 0x00,
+		0x0F, 0xFF, 0xF0, 0x00,
+		0x00, 0x00, 0x00, 0x00
+	};
+	HICON icon = CreateIcon(hInstance, 32, 8, 1, 1, iconAnd, iconXor);
+
+	// Create window class
 	WNDCLASS wndclass = {
 		.style = CS_HREDRAW | CS_VREDRAW,
 		.lpfnWndProc = WndProc,
 		.cbClsExtra = 0,
 		.cbWndExtra = 0,
 		.hInstance = hInstance,
-		.hIcon = LoadIcon(NULL, IDI_APPLICATION),
+		.hIcon = icon,
 		.hCursor = LoadCursor(NULL, IDC_ARROW),
 		.hbrBackground = colors[0],
 		.lpszMenuName = NULL,
 		.lpszClassName = name
 	};
-
 	RegisterClass(&wndclass);
 
+	// Create window
 	HWND hwnd = CreateWindow(
 		name, name,
 		WS_OVERLAPPEDWINDOW ^ WS_THICKFRAME ^ WS_MAXIMIZEBOX,
