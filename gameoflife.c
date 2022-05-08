@@ -206,19 +206,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 
 		case WM_MOUSEMOVE: {
-			mousePoint = ScreenToGamePoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-			RECT statusRect;
-			GetClientRect(hwnd, &statusRect);
-			statusRect.top = HEIGHT * CELL_SIZE;
-			InvalidateRect(hwnd, &statusRect, false);
+			struct Point point = ScreenToGamePoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+			if (point.x >= 0 && point.x < WIDTH && point.y >= 0 && point.y < HEIGHT) {
+				mousePoint = point;
+				RECT statusRect;
+				GetClientRect(hwnd, &statusRect);
+				statusRect.top = HEIGHT * CELL_SIZE;
+				InvalidateRect(hwnd, &statusRect, false);
+			}
 			return 0;
 		}
 
 		case WM_LBUTTONDOWN: {
-			int x = GET_X_LPARAM(lParam);
-			int y = GET_Y_LPARAM(lParam);
-			struct Point point = ScreenToGamePoint(x, y);
-			
+			struct Point point = ScreenToGamePoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 			if (point.x >= 0 && point.x < WIDTH && point.y >= 0 && point.y < HEIGHT) {
 				board[point.x][point.y] = !board[point.x][point.y];
 				RECT rect = GameToScreenRect(point.x, point.y);
