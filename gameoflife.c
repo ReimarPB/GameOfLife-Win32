@@ -11,18 +11,19 @@
 #define CELL_SIZE  10
 #define BASE_SPEED 100
 
+struct Point {
+	int x;
+	int y;
+};
+
 bool board[WIDTH][HEIGHT];
 bool paused = true;
 bool grid = false;
 int generation = 0;
 double speedMultiplier = 1.0;
+struct Point mousePoint;
 
 HBRUSH colors[2];
-
-struct Point {
-	int x;
-	int y;
-};
 
 const UINT IDT_GENERATION = 0;
 
@@ -117,6 +118,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 				rect.right - rect.left, rect.bottom - rect.top,
 				SWP_NOMOVE | SWP_NOZORDER
 			);
+
+			mousePoint = (struct Point){ -1, -1 };
 		}
 
 		case WM_TIMER: {
@@ -174,22 +177,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			
 			// Draw status line
-			SetTextColor(hdcMem, RGB(255, 255, 255));
-			SetBkColor(hdcMem, RGB(0, 0, 0));
+			if (updateRect.bottom >= HEIGHT * CELL_SIZE) {
+				SetTextColor(hdcMem, RGB(255, 255, 255));
+				SetBkColor(hdcMem, RGB(0, 0, 0));
 
-			char generationStatus[16];
-			StringCbPrintf(generationStatus, sizeof(generationStatus), TEXT("Generation %d"), generation);
-			TextOut(hdcMem, 0, HEIGHT * CELL_SIZE, generationStatus, strlen(generationStatus));
+				char statusLeft[64];
+				StringCbPrintf(statusLeft, sizeof(statusLeft), TEXT("Generation %d   (Speed x%g)"), generation, speedMultiplier);
+				TextOut(hdcMem, 0, HEIGHT * CELL_SIZE, statusLeft, strlen(statusLeft));
+				
+				char statusRight[64];
+				StringCbPrintf(statusRight, sizeof(statusRight), TEXT("%d, %d"), mousePoint.x, mousePoint.y);
+				SetTextAlign(hdcMem, TA_RIGHT);
+				TextOut(hdcMem, WIDTH * CELL_SIZE, HEIGHT * CELL_SIZE, statusRight, strlen(statusRight));
 
-			char speedStatus[16];
-			StringCbPrintf(speedStatus, sizeof(speedStatus), TEXT("Speed x%g"), speedMultiplier);
-			SetTextAlign(hdcMem, TA_RIGHT);
-			TextOut(hdcMem, WIDTH * CELL_SIZE, HEIGHT * CELL_SIZE, speedStatus, strlen(speedStatus));
-
-			if (paused) {
-				SetTextAlign(hdcMem, TA_CENTER);
-				PCSTR pausedText = TEXT("Paused");
-				TextOut(hdcMem, (WIDTH * CELL_SIZE) / 2, HEIGHT * CELL_SIZE, pausedText, strlen(pausedText));
+				if (paused) {
+					SetTextAlign(hdcMem, TA_CENTER);
+					PCSTR pausedText = TEXT("Paused");
+					TextOut(hdcMem, (WIDTH * CELL_SIZE) / 2, HEIGHT * CELL_SIZE, pausedText, strlen(pausedText));
+				}
 			}
 
 			// Copy buffer and clean up
@@ -197,6 +202,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 			SelectObject(hdcMem, hbmOld);
 			DeleteObject(hbmMem);
 			EndPaint(hwnd, &ps);
+			return 0;
+		}
+
+		case WM_MOUSEMOVE: {
+			mousePoint = ScreenToGamePoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+			RECT statusRect;
+			GetClientRect(hwnd, &statusRect);
+			statusRect.top = HEIGHT * CELL_SIZE;
+			InvalidateRect(hwnd, &statusRect, false);
 			return 0;
 		}
 
