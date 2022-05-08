@@ -172,7 +172,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 
 			// Copy buffer and clean up
-	        BitBlt(hdc, clientRect.left, clientRect.top, clientRect.right - clientRect.left, clientRect.bottom - clientRect.top, hdcMem, clientRect.left, clientRect.top, SRCCOPY);
+			BitBlt(hdc, clientRect.left, clientRect.top, clientRect.right - clientRect.left, clientRect.bottom - clientRect.top, hdcMem, clientRect.left, clientRect.top, SRCCOPY);
 			SelectObject(hdcMem, hbmOld);
 			DeleteObject(hbmMem);
 			EndPaint(hwnd, &ps);
@@ -228,6 +228,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 						SetTimer(hwnd, IDT_GENERATION, GEN_TIME / speedMultiplier, NULL);
 					}
 					InvalidateRect(hwnd, &statusRect, false);
+					break;
+
+				case 'R':
+					if (MessageBox(hwnd, TEXT("Are you sure you want to reset everything?"), TEXT("Reset"), MB_YESNO | MB_ICONWARNING) == IDYES) {
+						generation = 0;
+						memset(board, 0, sizeof(board));
+						paused = true;
+						KillTimer(hwnd, IDT_GENERATION);
+						InvalidateRect(hwnd, &clientRect, false);
+					}
 					break;
 
 			}
